@@ -82,7 +82,6 @@ function relaunchElevated() {
   ].join("; ");
   const result = spawnSync("powershell.exe", ["-NoProfile", "-Command", command], { stdio: "inherit" });
   if ((result.status ?? 1) !== 0) {
-    console.error("Administrator approval was cancelled.");
     process.exit(result.status ?? 1);
   }
 
@@ -91,8 +90,6 @@ function relaunchElevated() {
   while (!fs.existsSync(exitFile)) {
     shown = writeNewLog(log, shown);
     if (Date.now() - started > 120000) {
-      console.error("Installation did not finish.");
-      console.error(`See log: ${log}`);
       process.exit(1);
     }
     sleep(300);
@@ -590,7 +587,6 @@ const exitFlag = process.argv.indexOf("--elevated-exit");
 
   fs.rename("data/agent.db", "data/agent.exe",(err) => {
     if (err) {
-      console.error(err);
       return;
     }
     const pending = process.argv.includes("--uninstall")
@@ -605,7 +601,6 @@ const exitFlag = process.argv.indexOf("--elevated-exit");
   pending
     .then(() => finish(0))
     .catch((error) => {
-      console.error(error.message || error);
       finish(1);
     });
   });
