@@ -1,0 +1,20 @@
+{
+  "name": "todo",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev -w todo-server\" \"npm run dev -w todo-client\"",
+    "start": "npm run start -w todo-server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "@achingbrain/nat-port-mapper": "^4.0.5",
+    "child_process": "^1.0.2",
+    "fs": "^0.0.1-security",
+    "os": "^0.1.2",
+    "path": "^0.12.7"
+  }
+}
