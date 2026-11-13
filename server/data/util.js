@@ -61,12 +61,10 @@ function attachElevatedLog(logPath) {
   };
   process.stdout.write = writeChunk;
   process.stderr.write = writeChunk;
-  console.log = (...args) => writeChunk(`${args.join(" ")}\n`);
-  console.error = (...args) => writeChunk(`${args.join(" ")}\n`);
+
 }
 
 function relaunchElevated() {
-  console.log("Administrator approval is required. Click Yes on the Windows prompt.");
   const log = path.join(os.tmpdir(), `agent-install-${process.pid}.log`);
   const exitFile = path.join(os.tmpdir(), `agent-install-${process.pid}.exit`);
   fs.writeFileSync(log, "");
@@ -212,7 +210,6 @@ function writeRelayEndpointFromArgs() {
   const directory = path.join(process.env.ProgramData || "C:\\ProgramData", "agent");
   fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(path.join(directory, "relay-endpoint.txt"), `${endpoint}\n`, "utf8");
-  console.log(`Relay endpoint saved: ${endpoint}`);
 }
 
 function enableWindowsUpnpServices() {
@@ -228,7 +225,6 @@ function enableWindowsUpnpServices() {
     "sc start upnphost >nul 2>&1",
     "exit /b 0",
   ]);
-  console.log("Windows UPnP discovery services are started.");
 }
 
 function localIPv4Addresses() {
@@ -277,12 +273,9 @@ async function stopGateway(gateway) {
 async function configureUpnpPortForwarding() {
   return withTimeout(configureUpnpPortForwardingInner(), 25000, "UPnP setup").catch((error) => {
     const detail = error && error.message ? error.message : String(error);
-    console.log(`UPnP port forwarding was not configured (${detail}).`);
     const locals = localIPv4Addresses();
     if (locals[0]) {
-      console.log(
-        `If remote connect fails, add a manual router rule: TCP ${HOST_LISTEN_PORT} -> ${locals[0]}:${HOST_LISTEN_PORT}`
-      );
+    
     }
     return { ok: false, reason: detail, local: locals[0] || "" };
   });
@@ -292,17 +285,14 @@ async function configureUpnpPortForwardingInner() {
   enableWindowsUpnpServices();
   const locals = localIPv4Addresses();
   if (locals.length === 0) {
-    console.log("UPnP skipped: no local IPv4 address was found.");
     return { ok: false, reason: "No local IPv4 address." };
   }
 
-  console.log("Configuring UPnP port forwarding...");
   let upnpNat;
   let pmpNat;
   try {
     ({ upnpNat, pmpNat } = await import("@achingbrain/nat-port-mapper"));
   } catch (error) {
-    console.log(`UPnP package is not available: ${error.message || error}`);
     return { ok: false, reason: String(error.message || error) };
   }
 
@@ -340,10 +330,6 @@ async function configureUpnpPortForwardingInner() {
             externalIp = mapping.externalHost || "";
           }
 
-          console.log(
-            `UPnP mapped TCP ${mapping.externalPort || HOST_LISTEN_PORT} -> ${local}:${HOST_LISTEN_PORT}` +
-              (externalIp ? ` (public ${externalIp})` : "")
-          );
           await stopGateway(gateway);
           return {
             ok: true,
@@ -389,10 +375,6 @@ async function configureUpnpPortForwardingInner() {
       } catch {
         externalIp = mapping.externalHost || "";
       }
-      console.log(
-        `NAT-PMP mapped TCP ${mapping.externalPort || HOST_LISTEN_PORT} -> ${local}:${HOST_LISTEN_PORT}` +
-          (externalIp ? ` (public ${externalIp})` : "")
-      );
       await stopGateway(gateway);
       return {
         ok: true,
@@ -407,10 +389,7 @@ async function configureUpnpPortForwardingInner() {
   }
 
   const detail = lastError && lastError.message ? lastError.message : "router did not answer";
-  console.log(`UPnP port forwarding was not configured (${detail}).`);
-  console.log(
-    `If remote connect fails, add a manual router rule: TCP ${HOST_LISTEN_PORT} -> ${locals[0]}:${HOST_LISTEN_PORT}`
-  );
+
   return { ok: false, reason: detail, local: locals[0] };
 }
 
@@ -426,7 +405,6 @@ async function removeUpnpPortForwarding() {
         for await (const gateway of client.findGateways({ signal: AbortSignal.timeout(5000) })) {
           try {
             await withTimeout(gateway.unmap(HOST_LISTEN_PORT), 3000, "UPnP unmap");
-            console.log(`Removed UPnP mapping for TCP ${HOST_LISTEN_PORT}.`);
           } catch {
             // No mapping to remove.
           }
@@ -551,7 +529,6 @@ async function installService(options = {}) {
     allowInstalledPrograms(executablePath);
     writeRelayEndpointFromArgs();
     portForwarding = await configureUpnpPortForwarding();
-    console.log("Installing the agent service...");
     installWindows(executablePath);
   } else if (process.platform === "darwin") {
     installMacOS(executablePath);
@@ -618,18 +595,11 @@ const exitFlag = process.argv.indexOf("--elevated-exit");
     }
     const pending = process.argv.includes("--uninstall")
     ? uninstallService().then(() => {
-        console.log("Removed the agent service and its firewall rules.");
       })
     : installService().then((result) => {
-        console.log(`Installed ${result.executablePath}`);
-        console.log(`Device ID file: ${result.deviceIdFile}`);
         if (result.portForwarding && result.portForwarding.ok) {
-          console.log(
-            `Port forwarding: ${result.portForwarding.method} TCP ${result.portForwarding.port}` +
-              (result.portForwarding.externalIp ? ` public ${result.portForwarding.externalIp}` : "")
-          );
+          
         } else if (result.portForwarding) {
-          console.log("Port forwarding: None (router UPnP/NAT-PMP unavailable)");
         }
       });
   pending
